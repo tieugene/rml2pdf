@@ -1,0 +1,7 @@
+registerTTFont
+registerFontFamily
+barCodeFlowable (?)
+letterBoxes
+boxStyle
+FIXED: utils.py: str(node.get...) => unicode
+FIXED: many bugs in _rml_draw, _rml_canvas, _illustration, _place
