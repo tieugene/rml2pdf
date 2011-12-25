@@ -15,7 +15,7 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import re, sys, pprint
+import re
 import reportlab
 
 def text_get(node):
@@ -57,7 +57,7 @@ def attr_get(node, attrs, dict={}):
 	for key in dict:
 		if node.hasAttribute(key):
 			if dict[key]=='str':
-				res[key] = unicode(node.getAttribute(key))
+				res[key] = str(node.getAttribute(key))
 			elif dict[key]=='bool':
 				res[key] = bool_get(node.getAttribute(key))
 			elif dict[key]=='int':

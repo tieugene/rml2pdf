@@ -6,7 +6,6 @@
 # Contributors
 #     Richard Waid <richard@iopen.net>
 #     Klaas Freitag <freitag@kde.org>
-#     TI_Eugene
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -22,8 +21,6 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-DEBUG = False
-
 import sys
 import StringIO
 import xml.dom.minidom
@@ -33,27 +30,6 @@ import reportlab
 from reportlab.pdfgen import canvas
 from reportlab import platypus
 
-try:
-    from reportlab.graphics.barcode.common import Codabar, Code11, I2of5, MSI
-    from reportlab.graphics.barcode.code128 import Code128
-    from reportlab.graphics.barcode.code39 import Standard39, Extended39
-    from reportlab.graphics.barcode.code93 import Standard93, Extended93
-    from reportlab.graphics.barcode.usps import FIM, POSTNET
-    #from reportlab.graphics.barcode.eanbc import EAN8, EAN13
-    barcode_codes = dict(codabar=Codabar, code11=Code11, code128=Code128,
-                 standard39=Standard39, extended39=Extended39, 
-                 standard93=Standard93, extended93=Extended93,
-                 i2of5=I2of5, msi=MSI, fim=FIM, postnet=POSTNET,
-	#	 ean8=EAN8, ean13=EAN13
-		 )
-    #sys.stderr.write('Barcodes:')
-    #for i in reportlab.graphics.barcode.getCodeNames():
-    #    sys.stderr.write(i + ' ')
-except ImportError:
-    barcode_codes = {}
-    #sys.stderr.write('No Barcodes')
-    pass
-
 import utils
 import color
 
@@ -62,7 +38,7 @@ import color
 #
 # encoding = 'latin1'
 # use utf8 for default
-encoding = 'utf-8'
+encoding = 'UTF-8'
 
 def _child_get(node, childs):
 	clds = []
@@ -73,18 +49,14 @@ def _child_get(node, childs):
 
 class _rml_styles(object):
 	def __init__(self, nodes):
-		if DEBUG: sys.stderr.write('styles\n')
 		self.styles = {}
 		self.names = {}
 		self.table_styles = {}
-		self.box_styles = {}
 		for node in nodes:
 			for style in node.getElementsByTagName('blockTableStyle'):
 				self.table_styles[style.getAttribute('id')] = self._table_style_get(style)
 			for style in node.getElementsByTagName('paraStyle'):
 				self.styles[style.getAttribute('name')] = self._para_style_get(style)
-			for style in node.getElementsByTagName('boxStyle'):
-				self.box_styles[style.getAttribute('name')] = self._box_style_get(style)
 			for variable in node.getElementsByTagName('initialize'):
 				for name in variable.getElementsByTagName('name'):
 					self.names[ name.getAttribute('id')] = name.getAttribute('value')
@@ -154,20 +126,6 @@ class _rml_styles(object):
 		self._para_style_update(style, node)
 		return style
 
-	def _box_style_get(self, node):
-		class BoxStyle(reportlab.lib.styles.PropertySet):
-			pass
-		return BoxStyle(node.getAttribute('name'), **utils.attr_get(node, ('fontSize', 'labelFontSize', 'boxWidth', 'boxHeight'), {
-			'parent': 'str',
-			'alias': 'str',
-			'fontName': 'str',
-			'labelFontName': 'str',
-			'textColor': 'str',
-			'boxStrokeColor': 'str',
-			'boxFillColor': 'str',
-			'labelTextColor': 'str',
-		}))
-
 	def para_style_get(self, node):
 		style = False
 		if node.hasAttribute('style'):
@@ -180,13 +138,8 @@ class _rml_styles(object):
 			style = copy.deepcopy(styles['Normal'])
 		return self._para_style_update(style, node)
 
-	#def box_style_get(self, node):
-	#	style = copy.deepcopy(self.box_styles[node.getAttribute('style')])
-	#	return self._para_style_update(style, node)
-
 class _rml_doc(object):
 	def __init__(self, data):
-		if DEBUG: sys.stderr.write('doc\n')
 		self.dom = xml.dom.minidom.parseString(data)
 		self.filename = self.dom.documentElement.getAttribute('filename')
 
@@ -199,26 +152,13 @@ class _rml_doc(object):
 			for font in node.getElementsByTagName('registerFont'):
 				name = font.getAttribute('fontName').encode('ascii')
 				fname = font.getAttribute('fontFile').encode('ascii')
-				pdfmetrics.registerFont(TTFont(name, fname))
+				pdfmetrics.registerFont(TTFont(name, fname ))
 				addMapping(name, 0, 0, name)    #normal
 				addMapping(name, 0, 1, name)    #italic
 				addMapping(name, 1, 0, name)    #bold
 				addMapping(name, 1, 1, name)    #italic and bold
-			for font in node.getElementsByTagName('registerTTFont'):
-				name = font.getAttribute('faceName').encode('ascii')
-				fname = font.getAttribute('fileName').encode('ascii')
-				pdfmetrics.registerFont(TTFont(name, fname))	# , subfontIndex=subfontIndex
-			for font in node.getElementsByTagName('registerFontFamily'):
-				pdfmetrics.registerFontFamily(
-					font.getAttribute('normal').encode('ascii'),
-					normal = font.getAttribute('normal').encode('ascii'),
-					bold = font.getAttribute('bold').encode('ascii'),
-					italic = font.getAttribute('italic').encode('ascii'),
-					boldItalic = font.getAttribute('boldItalic').encode('ascii')
-				)
 
 	def render(self, out):
-		if DEBUG: sys.stderr.write('doc.render\n')
 		el = self.dom.documentElement.getElementsByTagName('docinit')
 		if el:
 			self.docinit(el)
@@ -228,25 +168,22 @@ class _rml_doc(object):
 
 		el = self.dom.documentElement.getElementsByTagName('template')
 		if len(el):
-			#if DEBUG: sys.stderr.write('<template>\n')
 			pt_obj = _rml_template(out, el[0], self)
-			#if DEBUG: sys.stderr.write('<story>\n')
 			pt_obj.render(self.dom.documentElement.getElementsByTagName('story')[0])
 		else:
 			self.canvas = canvas.Canvas(out)
 			pd = self.dom.documentElement.getElementsByTagName('pageDrawing')[0]
-			pd_obj = _rml_canvas(self.canvas, self)
+			pd_obj = _rml_canvas(self.canvas, None, self)
 			pd_obj.render(pd)
 			self.canvas.showPage()
 			self.canvas.save()
 
 class _rml_canvas(object):
-	def __init__(self, canvas, doc):
-		#if DEBUG: sys.stderr.write('canvas: doc=' + type(doc).__name__ + '\n')	# _rml_doc(ok)|_rml_styles(err)
+	def __init__(self, canvas, doc_tmpl=None, doc=None):
 		self.canvas = canvas
-		self.doc = doc
 		self.styles = doc.styles
-		#self.doc_tmpl = doc_tmpl
+		self.doc_tmpl = doc_tmpl
+		self.doc = doc
 
 	def _textual(self, node):
 		rc = ''
@@ -262,33 +199,27 @@ class _rml_canvas(object):
 
 	def _drawString(self, node):
 		self.canvas.drawString(text=self._textual(node), **utils.attr_get(node, ['x','y']))
-
 	def _drawCenteredString(self, node):
 		self.canvas.drawCentredString(text=self._textual(node), **utils.attr_get(node, ['x','y']))
-
 	def _drawRightString(self, node):
 		self.canvas.drawRightString(text=self._textual(node), **utils.attr_get(node, ['x','y']))
-
 	def _rect(self, node):
 		if node.hasAttribute('round'):
 			self.canvas.roundRect(radius=utils.unit_get(node.getAttribute('round')), **utils.attr_get(node, ['x','y','width','height'], {'fill':'bool','stroke':'bool'}))
 		else:
 			self.canvas.rect(**utils.attr_get(node, ['x','y','width','height'], {'fill':'bool','stroke':'bool'}))
-
 	def _ellipse(self, node):
 		x1 = utils.unit_get(node.getAttribute('x'))
 		x2 = utils.unit_get(node.getAttribute('width'))
 		y1 = utils.unit_get(node.getAttribute('y'))
 		y2 = utils.unit_get(node.getAttribute('height'))
 		self.canvas.ellipse(x1,y1,x2,y2, **utils.attr_get(node, [], {'fill':'bool','stroke':'bool'}))
-
 	def _curves(self, node):
 		line_str = utils.text_get(node).split()
 		lines = []
 		while len(line_str)>7:
 			self.canvas.bezier(*[utils.unit_get(l) for l in line_str[0:8]])
 			line_str = line_str[8:]
-
 	def _lines(self, node):
 		line_str = utils.text_get(node).split()
 		lines = []
@@ -296,12 +227,10 @@ class _rml_canvas(object):
 			lines.append([utils.unit_get(l) for l in line_str[0:4]])
 			line_str = line_str[4:]
 		self.canvas.lines(lines)
-
 	def _grid(self, node):
 		xlist = [utils.unit_get(s) for s in node.getAttribute('xs').split(',')]
 		ylist = [utils.unit_get(s) for s in node.getAttribute('ys').split(',')]
 		self.canvas.grid(xlist, ylist)
-
 	def _translate(self, node):
 		dx = 0
 		dy = 0
@@ -311,20 +240,10 @@ class _rml_canvas(object):
 			dy = utils.unit_get(node.getAttribute('dy'))
 		self.canvas.translate(dx,dy)
 
-	def _transform(self, node):
-		# FIXME: any whitespaces
-		args = []
-		for i in self._textual(node).lstrip().rstrip().split(' '):
-			args.append(float(i))
-			sys.stderr.write(str(float(i)) + '\n')
-		#print args
-		self.canvas.transform(*args)
-
 	def _circle(self, node):
 		self.canvas.circle(x_cen=utils.unit_get(node.getAttribute('x')), y_cen=utils.unit_get(node.getAttribute('y')), r=utils.unit_get(node.getAttribute('radius')), **utils.attr_get(node, [], {'fill':'bool','stroke':'bool'}))
 
 	def _place(self, node):
-		if DEBUG: sys.stderr.write('canvas._place\n')
 		flows = _rml_flowable(self.doc).render(node)
 		infos = utils.attr_get(node, ['x','y','width','height'])
 
@@ -405,88 +324,7 @@ class _rml_canvas(object):
 			self.path.close()
 		self.canvas.drawPath(self.path, **utils.attr_get(node, [], {'fill':'bool','stroke':'bool'}))
 
-	def _textBox(self, node):
-		pass
-
-	def _letterBoxes(self, node):
-		# 1. get args (args.update(style))
-		attrs = utils.attr_get(node, ('x', 'y', 'boxWidth', 'boxHeight', 'lineWidth', 'fontSize', 'labelFontSize', 'labelOffsetX', 'labelOffsetY',), {
-			'style': 'str',
-			'count': 'int',
-			'boxStrokeColor': 'str',
-			'boxFillColor': 'str',
-			'textColor': 'str',
-			'fontName': 'str',
-			'label': 'str',
-			'labelTextColor': 'str',
-			'labelFontName': 'str',
-		})
-		# 2. apply style (hack)
-		if ('style' in attrs):
-			args = copy.deepcopy(self.styles.box_styles[attrs['style']].__dict__)
-			args.update(attrs)
-			#sys.stderr.write(type())
-		else:
-			args = attrs
-		# 3. draw:
-		# rect (x, y, width, height, stroke:bool, fill=bool) + setFillColor(color) + setStrokeColor(color) + setLineWidth(lineWidth)
-		# drawString: x, y + setFont(name, size)|setFontSize()|canvas._fontsize + setFillColor(textColor)
-		# 
-		self.canvas.saveState()
-		if ('lineWidth' in args):
-			self.canvas.setLineWidth(args['lineWidth'])
-		if (('fontSize' in args) and not ('fontName' in args)):
-			self.canvas.setFontSize(args['fontSize'])
-		elif ('fontName' in args):
-			self.canvas.setFont(args['fontName'], args.get('fontSize'), self.canvas._fontsize)	# hack
-		# 4. calc: boxWidth, boxHeight
-		if not ('boxWidth' in args):
-			args['boxWidth'] = self.canvas.stringWidth(self.canvas._fontname, self.canvas._fontsize)
-		if not ('boxHeight' in args):
-			args['boxHeight'] = self.canvas._fontsize + 2
-		text = self._textual(node)
-		x = args['x']
-		y = args['y']
-		w = args['boxWidth']
-		h = args['boxHeight']
-		dy = (0.5 * h) - (0.25 * self.canvas._fontsize)
-		#sys.stderr.write("%d" % h)
-		# 5. let's go
-		for i in xrange(args['count']):
-			x1 = x + i * w
-			# 5.1. rect
-			self.canvas.saveState()
-			if ('boxFillColor' in args):
-				self.canvas.setFillColor(args['boxFillColor'])
-			if ('boxStrokeColor' in args):
-				self.canvas.setStrokeColor(args['boxStrokeColor'])
-			self.canvas.rect(x = x1, y = y, width = w, height = h, fill = ('boxFillColor' in args))
-			self.canvas.restoreState()
-			# 5.2. symbol
-			self.canvas.saveState()
-			if ('textColor' in args):
-				self.canvas.setFillColor(args['textColor'])
-			if (i < len(text)):
-				self.canvas.drawCentredString(float(x1 + (float(w) / 2.0)), float(y) + dy, text=text[i])
-			self.canvas.restoreState()
-		self.canvas.restoreState()
-		# 5.3. label
-		if ('label' in args):
-			self.canvas.saveState()
-			if (('labelFontSize' in args) and not ('labelFontName' in args)):
-				self.canvas.setFontSize(args['labelFontSize'])
-			elif ('labelFontName' in args):
-				self.canvas.setFont(args['labelFontName'], args.get('labelFontSize'), self.canvas._fontsize)	# hack
-			if ('labelTextColor' in args):
-				self.canvas.setFillColor(args['labelTextColor'])
-			y += args.get('labelOffsetY', 0)
-			#sys.stderr.write('Label\n')
-			self.canvas.drawString(x = x + args.get('labelOffsetX', 0), y = y + args.get('labelOffsetY', 0), text=args['label'])
-			# TODO: align, default OffsetX
-			self.canvas.restoreState()
-
 	def render(self, node):
-		if DEBUG: sys.stderr.write('canvas.render\n')
 		tags = {
 			'drawCentredString': self._drawCenteredString,
 			'drawRightString': self._drawRightString,
@@ -505,39 +343,29 @@ class _rml_canvas(object):
 			'path': self._path,
 			'rotate': lambda node: self.canvas.rotate(float(node.getAttribute('degrees'))),
 			'translate': self._translate,
-			'transform': self._transform,
-			'image': self._image,
-			'textBox': self._textBox,
-			'letterBoxes': self._letterBoxes,
+			'image': self._image
 		}
 		for nd in node.childNodes:
-			notfound = True
 			if nd.nodeType==nd.ELEMENT_NODE:
-				# FIXME: speedup
 				for tag in tags:
 					if nd.localName==tag:
 						tags[tag](nd)
-						notfound = False
-				#	if nd.localName in tags:
-				#		tags[nd.localName](nd)
 						break
-				if (notfound): sys.stderr.write('Graphics %s not implemented yet\n' % nd.localName)
 
 class _rml_draw(object):
-	def __init__(self, node):
-		#if DEBUG: sys.stderr.write('draw: styles=' + type(styles).__name__ + '\n')
+	def __init__(self, node, styles):
 		self.node = node
+		self.styles = styles
+		self.canvas = None
 
 	def render(self, canvas, doc):
-		#if DEBUG: sys.stderr.write('draw.render: doc=' + type(doc).__name__ + '\n')	# _rml_doc(ok)|_rml_styles(err)
 		canvas.saveState()
-		cnv = _rml_canvas(canvas, doc)
+		cnv = _rml_canvas(canvas, doc, self.styles)
 		cnv.render(self.node)
 		canvas.restoreState()
 
 class _rml_flowable(object):
 	def __init__(self, doc):
-		#if (DEBUG): sys.stderr.write('flowable: doc=' + type(doc).__name__ + '\n')	# _rml_doc(ok)|_rml_styles(err)
 		self.doc = doc
 		self.styles = doc.styles
 
@@ -594,28 +422,23 @@ class _rml_flowable(object):
 		return table
 
 	def _illustration(self, node):
-		if DEBUG: sys.stderr.write('flowable._illustration\n')
 		class Illustration(platypus.flowables.Flowable):
-			def __init__(self, node, styles, doc):
+			def __init__(self, node, styles):
 				self.node = node
 				self.styles = styles
-				self.doc = doc
 				self.width = utils.unit_get(node.getAttribute('width'))
 				self.height = utils.unit_get(node.getAttribute('height'))
 			def wrap(self, *args):
 				return (self.width, self.height)
 			def draw(self):
 				canvas = self.canv
-				drw = _rml_draw(self.node)
-				#drw = _rml_draw(self.node, self.styles)
-				#drw.render(self.canv, None)	# WTF?
-				drw.render(self.canv, self.doc)
-		return Illustration(node, self.styles, self.doc)
+				drw = _rml_draw(self.node, self.styles)
+				drw.render(self.canv, None)
+		return Illustration(node, self.styles)
 
 	def _flowable(self, node):
-		# FIXME: speedup
 		if node.localName=='para':
-			style = self.styles.para_style_get(node)	# ERROR
+			style = self.styles.para_style_get(node)
 			return platypus.Paragraph(self._textual(node), style, **(utils.attr_get(node, [], {'bulletText':'str'})))
 		elif node.localName=='name':
 			self.styles.names[ node.getAttribute('id')] = node.getAttribute('value')
@@ -663,18 +486,11 @@ class _rml_flowable(object):
 			return platypus.NextPageTemplate(str(node.getAttribute('name')))
 		elif node.localName=='nextFrame':
 			return platypus.CondPageBreak(1000)           # TODO: change the 1000 !
-		elif barcode_codes and node.localName=='barCodeFlowable':
-			#sys.stderr.write("Barcode")
-			code = barcode_codes.get(node.getAttribute('code'), Code128)
-			return code(
-				self._textual(node),
-				**utils.attr_get(node, ['barWidth', 'barHeight'], {'fontName': 'str', 'humanReadable': 'bool'}))
 		else:
 			sys.stderr.write('Warning: flowable not yet implemented: %s !\n' % (node.localName,))
 			return None
 
 	def render(self, node_story):
-		#if DEBUG: sys.stderr.write('flowable.render\n')
 		story = []
 		node = node_story.firstChild
 		while node:
@@ -687,7 +503,6 @@ class _rml_flowable(object):
 
 class _rml_template(object):
 	def __init__(self, out, node, doc):
-		#if DEBUG: sys.stderr.write('template: doc=' + type(doc).__name__ + '\n')
 		if not node.hasAttribute('pageSize'):
 			pageSize = (utils.unit_get('21cm'), utils.unit_get('29.7cm'))
 		else:
@@ -697,7 +512,6 @@ class _rml_template(object):
 		self.doc_tmpl = platypus.BaseDocTemplate(out, pagesize=pageSize, **utils.attr_get(node, ['leftMargin','rightMargin','topMargin','bottomMargin'], {'allowSplitting':'int','showBoundary':'bool','title':'str','author':'str'}))
 		self.page_templates = []
 		self.styles = doc.styles
-		self.doc_tmpl.styles = doc.styles	# hack
 		self.doc = doc
 		pts = node.getElementsByTagName('pageTemplate')
 		for pt in pts:
@@ -707,16 +521,13 @@ class _rml_template(object):
 				frames.append( frame )
 			gr = pt.getElementsByTagName('pageGraphics')
 			if len(gr):
-				drw = _rml_draw(gr[0])
-				#drw = _rml_draw(gr[0], self.doc)	# WTF?
-				#drw = _rml_draw(gr[0], self.styles)	# t2p
+				drw = _rml_draw(gr[0], self.doc)
 				self.page_templates.append( platypus.PageTemplate(frames=frames, onPage=drw.render, **utils.attr_get(pt, [], {'id':'str'}) ))
 			else:
 				self.page_templates.append( platypus.PageTemplate(frames=frames, **utils.attr_get(pt, [], {'id':'str'}) ))
 		self.doc_tmpl.addPageTemplates(self.page_templates)
 
 	def render(self, node_story):
-		#if DEBUG: sys.stderr.write('template.render\n')
 		r = _rml_flowable(self.doc)
 		fis = r.render(node_story)
 		self.doc_tmpl.build(fis)
