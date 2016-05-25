@@ -57,7 +57,7 @@ def attr_get(node, attrs, dict={}):
     for key in dict:
         if node.hasAttribute(key):
             if dict[key]=='str':
-                res[key] = unicode(node.getAttribute(key))
+                res[key] = str(node.getAttribute(key))
             elif dict[key]=='bool':
                 res[key] = bool_get(node.getAttribute(key))
             elif dict[key]=='int':

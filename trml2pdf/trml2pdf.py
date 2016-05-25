@@ -413,7 +413,7 @@ class _rml_canvas(object):
             self.canvas.setFont(args['fontName'], args.get('fontSize'), self.canvas._fontsize)	# hack
         # 4. calc: boxWidth, boxHeight
         if not ('boxWidth' in args):
-            args['boxWidth'] = self.canvas.stringWidth(self.canvas._fontname, self.canvas._fontsize)
+            args['boxWidth'] = self.canvas.stringWidth('W', self.canvas._fontname, self.canvas._fontsize)
         if not ('boxHeight' in args):
             args['boxHeight'] = self.canvas._fontsize + 2
         text = self._textual(node)
