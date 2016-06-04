@@ -383,16 +383,27 @@ class _rml_canvas(object):
 
     def _letterBoxes(self, node):
         # 1. get args (args.update(style))
-        attrs = utils.attr_get(node, ('x', 'y', 'boxWidth', 'boxHeight', 'lineWidth', 'fontSize', 'labelFontSize', 'labelOffsetX', 'labelOffsetY',), {
-                'style': 'str',
-                'count': 'int',
-                'boxStrokeColor': 'str',
-                'boxFillColor': 'str',
-                'textColor': 'str',
-                'fontName': 'str',
-                'label': 'str',
-                'labelTextColor': 'str',
-                'labelFontName': 'str',
+        attrs = utils.attr_get(node, (
+            'x',
+            'y',
+            'boxWidth',
+            'boxHeight',
+            'boxGap',
+            'lineWidth',
+            'fontSize',
+            'labelFontSize',
+            'labelOffsetX',
+            'labelOffsetY',
+        ), {
+            'style': 'str',
+            'count': 'int',
+            'boxStrokeColor': 'str',
+            'boxFillColor': 'str',
+            'textColor': 'str',
+            'fontName': 'str',
+            'label': 'str',
+            'labelTextColor': 'str',
+            'labelFontName': 'str',
         })
         # 2. apply style (hack)
         if ('style' in attrs):
@@ -416,15 +427,18 @@ class _rml_canvas(object):
             args['boxWidth'] = self.canvas.stringWidth('W', self.canvas._fontname, self.canvas._fontsize)
         if not ('boxHeight' in args):
             args['boxHeight'] = self.canvas._fontsize + 2
+        if not ('boxGap' in args):
+            args['boxGap'] = 0
         text = self._textual(node)
         x = args['x']
         y = args['y']
         w = args['boxWidth']
         h = args['boxHeight']
+        g = args['boxGap']
         dy = (0.5 * h) - (0.25 * self.canvas._fontsize)
         # 5. let's go
         for i in xrange(args['count']):
-            x1 = x + i * w
+            x1 = x + i * (w + g)
             # 5.1. rect
             self.canvas.saveState()
             if ('boxFillColor' in args):
