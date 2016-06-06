@@ -150,7 +150,13 @@ class _rml_styles(object):
     def _box_style_get(self, node):
         class BoxStyle(reportlab.lib.styles.PropertySet):
             pass
-        return BoxStyle(node.getAttribute('name'), **utils.attr_get(node, ('fontSize', 'labelFontSize', 'boxWidth', 'boxHeight'), {
+        return BoxStyle(node.getAttribute('name'), **utils.attr_get(node, (
+                'boxWidth',
+                'boxHeight',
+                'boxGap',
+                'fontSize',
+                'labelFontSize',
+            ), {
                 'parent': 'str',
                 'alias': 'str',
                 'fontName': 'str',
@@ -429,13 +435,14 @@ class _rml_canvas(object):
             args['boxHeight'] = self.canvas._fontsize + 2
         if not ('boxGap' in args):
             args['boxGap'] = 0
-        text = self._textual(node)
         x = args['x']
         y = args['y']
         w = args['boxWidth']
         h = args['boxHeight']
         g = args['boxGap']
         dy = (0.5 * h) - (0.25 * self.canvas._fontsize)
+        #text = self._textual(node)
+        text = self._textual(node).decode('utf-8')
         # 5. let's go
         for i in xrange(args['count']):
             x1 = x + i * (w + g)
@@ -711,7 +718,8 @@ if __name__=="__main__":
     if len(sys.argv)>1:
         if sys.argv[1]=='--help':
             trml2pdf_help()
-        print parseString(file(sys.argv[1], 'r').read()),
+        data = file(sys.argv[1], 'r').read()
+        print parseString(data)
     else:
         print 'Usage: trml2pdf input.rml >output.pdf'
         print 'Try \'trml2pdf --help\' for more information.'
