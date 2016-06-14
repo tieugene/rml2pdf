@@ -154,6 +154,7 @@ class _rml_styles(object):
                 'boxWidth',
                 'boxHeight',
                 'boxGap',
+		'lineWidth',
                 'fontSize',
                 'labelFontSize',
             ), {
@@ -479,6 +480,7 @@ class _rml_canvas(object):
     def render(self, node):
         tags = {
                 'drawCentredString': self._drawCenteredString,
+                'drawCenteredString': self._drawCenteredString,
                 'drawRightString': self._drawRightString,
                 'drawString': self._drawString,
                 'rect': self._rect,
